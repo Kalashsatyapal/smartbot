@@ -1,55 +1,56 @@
 const express = require('express');
-const axios = require('axios');
 const router = express.Router();
-require('dotenv').config();
+const ChatSession = require('../models/ChatSession');
 
+// POST /api/chat
 router.post('/', async (req, res) => {
-  const { message } = req.body;
+  const { message, userId, sessionId } = req.body;
 
-  if (!message || typeof message !== 'string') {
-    return res.status(400).json({ error: 'Message is required and must be a string.' });
-  }
+  // Simulated AI reply (replace with real AI integration)
+  const aiReply = `Echo: ${message}`;
+
   try {
-    const openrouterRes = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: 'mistralai/mistral-small-3.1-24b-instruct:free',
+    let chat;
+
+    if (sessionId) {
+      // Add to existing session
+      chat = await ChatSession.findById(sessionId);
+      if (!chat) return res.status(404).json({ error: 'Session not found' });
+
+      chat.messages.push({ role: 'user', content: message });
+      chat.messages.push({ role: 'ai', content: aiReply });
+      await chat.save();
+    } else {
+      // Create new session
+      chat = new ChatSession({
+        userId,
         messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful and friendly AI assistant.',
-          },
-          {
-            role: 'user',
-            content: message,
-          },
+          { role: 'user', content: message },
+          { role: 'ai', content: aiReply },
         ],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3000/',
-          'X-Title': 'Next.js AI Chatbot',
-        },
-      }
-    );
-
-    const reply = openrouterRes.data?.choices?.[0]?.message?.content;
-
-    if (!reply) {
-      throw new Error('Invalid AI response format');
+      });
+      await chat.save();
     }
 
-    res.json({ reply });
-  } catch (error) {
-    console.error('OpenRouter Error:', error.response?.data || error.message);
-    res.status(500).json({
-      error: 'Failed to get response from AI',
+    res.json({
+      reply: aiReply,
+      sessionId: chat._id,
     });
+  } catch (error) {
+    console.error('❌ Chat API Error:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/chat/sessions?userId=...
+router.get('/sessions', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const sessions = await ChatSession.find({ userId }).sort({ createdAt: -1 });
+    res.json(sessions);
+  } catch (err) {
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
 module.exports = router;
-
-
