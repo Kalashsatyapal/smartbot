@@ -90,6 +90,12 @@ export default function Home() {
               <h1 className="text-2xl font-bold">🤖 AI Chatbot</h1>
               <p className="text-sm">Welcome, {user.email}</p>
             </div>
+            <button
+      onClick={() => setChat([])}
+      className="bg-green-600 text-white px-3 py-1 rounded"
+    >
+      New Chat
+    </button>
             <button onClick={handleLogout} className="bg-red-500 text-white px-3 py-1 rounded">
               Logout
             </button>
