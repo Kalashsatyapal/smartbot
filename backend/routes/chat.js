@@ -1,57 +1,52 @@
 const express = require('express');
-const router = express.Router();
-const Chat = require('../models/Chat');
 const axios = require('axios');
+const router = express.Router();
+require('dotenv').config();
 
 router.post('/', async (req, res) => {
-  const { userId, message } = req.body;
+  const { message } = req.body;
 
+  if (!message || typeof message !== 'string') {
+    return res.status(400).json({ error: 'Message is required and must be a string.' });
+  }
   try {
-    const aiRes = await axios.post(
+    const openrouterRes = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
         model: 'mistralai/mistral-small-3.1-24b-instruct:free',
-        messages: [{ role: 'user', content: message }],
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a helpful and friendly AI assistant.',
+          },
+          {
+            role: 'user',
+            content: message,
+          },
+        ],
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
+          'HTTP-Referer': 'http://localhost:3000/',
+          'X-Title': 'Next.js AI Chatbot',
         },
       }
     );
 
-    const aiReply = aiRes.data.choices[0].message.content;
+    const reply = openrouterRes.data?.choices?.[0]?.message?.content;
 
-    let chat = await Chat.findOne({ userId }).sort({ createdAt: -1 });
-
-    if (chat) {
-      chat.messages.push({ role: 'user', content: message });
-      chat.messages.push({ role: 'assistant', content: aiReply });
-      await chat.save();
-    } else {
-      chat = await Chat.create({
-        userId,
-        messages: [
-          { role: 'user', content: message },
-          { role: 'assistant', content: aiReply },
-        ],
-      });
+    if (!reply) {
+      throw new Error('Invalid AI response format');
     }
 
-    res.json({ reply: aiReply });
-  } catch (err) {
-    console.error('AI Error:', err.response ? err.response.data : err.message);
-    res.status(500).json({ error: 'AI Error' });
-  }
-});
-
-router.get('/:userId', async (req, res) => {
-  try {
-    const chat = await Chat.find({ userId: req.params.userId }).sort({ createdAt: -1 });
-    res.json(chat);
-  } catch (err) {
-    res.status(500).json({ error: 'History fetch error' });
+    res.json({ reply });
+  } catch (error) {
+    console.error('OpenRouter Error:', error.response?.data || error.message);
+    res.status(500).json({
+      error: 'Failed to get response from AI',
+    });
   }
 });
 
