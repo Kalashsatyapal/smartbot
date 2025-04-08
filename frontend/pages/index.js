@@ -3,7 +3,6 @@ import { auth } from '../firebaseconfig';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { useRouter } from 'next/router';
 import axios from 'axios';
-
 export default function Home() {
   const [input, setInput] = useState('');
   const [chat, setChat] = useState([]);
@@ -12,7 +11,6 @@ export default function Home() {
   const [sessions, setSessions] = useState([]);
   const [sessionId, setSessionId] = useState(null);
   const router = useRouter();
-
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (u) {
@@ -24,7 +22,6 @@ export default function Home() {
     });
     return () => unsub();
   }, []);
-
   const fetchSessions = async (uid) => {
     try {
       const res = await axios.get('http://localhost:5000/api/chat/sessions', {
@@ -35,25 +32,20 @@ export default function Home() {
       console.error('❌ Failed to load sessions', err);
     }
   };
-
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
-
     const userMessage = { role: 'user', content: input };
     setChat((prev) => [...prev, userMessage]);
     setInput('');
     setLoading(true);
-
     try {
       const res = await axios.post('http://localhost:5000/api/chat', {
         message: input,
         userId: user.uid,
         sessionId,
       });
-
       const aiMessage = { role: 'ai', content: res.data.reply };
       setChat((prev) => [...prev, aiMessage]);
-
       if (!sessionId) {
         setSessionId(res.data.sessionId);
         fetchSessions(user.uid);
@@ -69,19 +61,15 @@ export default function Home() {
       setLoading(false);
     }
   };
-
   const handleLogout = async () => {
     await signOut(auth);
     router.push('/login');
   };
-
   const handleNewChat = () => {
     setChat([]);
     setSessionId(null);
   };
-
   if (!user) return null;
-
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4">
       <h1 className="text-3xl font-bold mb-4">🤖 AI Chatbot</h1>
@@ -100,7 +88,6 @@ export default function Home() {
           Logout
         </button>
       </div>
-
       <div className="w-full max-w-6xl flex">
         {/* Sidebar */}
         <div className="w-1/4 mr-4 bg-white shadow-lg rounded-lg p-4 overflow-y-auto h-[600px]">
@@ -124,7 +111,6 @@ export default function Home() {
             ))
           )}
         </div>
-
         {/* Chat Box */}
         <div className="w-3/4 bg-white rounded-xl shadow-lg p-4 flex flex-col">
           <div className="h-[500px] overflow-y-auto mb-4 space-y-2 pr-2">
@@ -140,14 +126,12 @@ export default function Home() {
                 {msg.content}
               </div>
             ))}
-
             {loading && (
               <div className="p-2 rounded-lg max-w-[80%] bg-gray-300 text-black self-start mr-auto animate-pulse">
                 Typing...
               </div>
             )}
           </div>
-
           <div className="flex gap-2">
             <input
               className="flex-1 border rounded-lg p-2"
